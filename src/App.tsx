@@ -1,12 +1,12 @@
-import './App.css'
+// App.tsx (Optional Global Wrapper)
+import { Outlet } from "react-router-dom";
+// import { Toaster } from "react-hot-toast"; // Example: Toast notifications
 
-function App() {
-
+export default function App() {
   return (
     <>
-    <h1 className=''>hello</h1>
+      {/* <Toaster position="top-right" /> */}
+      <Outlet />
     </>
-  )
+  );
 }
-
-export default App
