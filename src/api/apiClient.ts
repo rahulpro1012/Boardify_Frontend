@@ -1,7 +1,7 @@
 import axios, {
   type AxiosInstance,
   type InternalAxiosRequestConfig,
-  type AxiosResponse,
+  // type AxiosResponse,
   AxiosError,
 } from "axios";
 import { store } from "../app/store";
@@ -9,7 +9,7 @@ import { authActions } from "../features/auth/authSlice";
 
 // 1. Better Type Definitions
 interface RefreshResponse {
-  accessToken: string;
+  token: string;
 }
 
 const BASE_URL = import.meta.env.VITE_API_BASE || "http://localhost:8080";
@@ -24,7 +24,7 @@ const api: AxiosInstance = axios.create({
 let refreshPromise: Promise<string | null> | null = null;
 
 // 3. Enhanced Refresh Logic
-async function refreshAccessToken(): Promise<string | null> {
+async function refreshtoken(): Promise<string | null> {
   // If a refresh is already in progress, return the existing promise
   if (refreshPromise) {
     return refreshPromise;
@@ -39,11 +39,11 @@ async function refreshAccessToken(): Promise<string | null> {
         { withCredentials: true }
       );
 
-      const { accessToken } = resp.data;
+      const { token } = resp.data;
 
-      if (accessToken) {
-        store.dispatch(authActions.setAccessToken(accessToken));
-        return accessToken;
+      if (token) {
+        store.dispatch(authActions.settoken(token));
+        return token;
       }
 
       // If response was ok but no token, force logout
@@ -65,7 +65,7 @@ async function refreshAccessToken(): Promise<string | null> {
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const state = store.getState();
-    const token = state.auth.accessToken;
+    const token = state.auth.token;
 
     // Check if headers exist before assigning
     if (token && config.headers) {
@@ -78,29 +78,35 @@ api.interceptors.request.use(
 
 // 5. Response Interceptor
 api.interceptors.response.use(
-  (res: AxiosResponse) => res,
+  (res) => res,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
     };
     const status = error.response?.status;
 
-    // Check 401 and ensure we haven't already retried this specific request
+    // 1. Check if the error came from the LOGIN endpoint
+    // We don't want to refresh if the user simply typed the wrong password!
+    if (
+      originalRequest.url?.includes("/auth/login") ||
+      originalRequest.url?.includes("/auth/register")
+    ) {
+      return Promise.reject(error);
+    }
+
+    // 2. Standard 401 check
     if (status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        const newToken = await refreshAccessToken();
-
+        const newToken = await refreshtoken();
         if (newToken) {
-          // Update the header and retry the original request
           if (originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
           }
           return api(originalRequest);
         }
       } catch (refreshError) {
-        // If refresh fails, reject with the original error or refresh error
         return Promise.reject(refreshError);
       }
     }

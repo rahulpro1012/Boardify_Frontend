@@ -1,14 +1,20 @@
-import { type JSX } from "react";
-import { Navigate } from "react-router-dom";
+// src/components/ProtectedRoute.tsx
+import { Navigate, Outlet } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { type RootState } from "../app/store";
 
-export default function ProtectedRoute({
-  children,
-}: {
-  children: JSX.Element;
-}) {
-  const token = useSelector((s: RootState) => s.auth.accessToken);
-  if (!token) return <Navigate to="/login" replace />;
-  return children;
+interface Props {
+  children?: React.ReactNode;
+}
+
+export default function ProtectedRoute({ children }: Props) {
+  const token = useSelector((state: RootState) => state.auth.token);
+
+  // If there is no token, kick them out to login
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // If there IS a token, render the protected content
+  return children ? <>{children}</> : <Outlet />;
 }

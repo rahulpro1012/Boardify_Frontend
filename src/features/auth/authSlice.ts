@@ -1,12 +1,12 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 type AuthState = {
-  accessToken: string | null;
+  token: string | null;
   userEmail: string | null;
   loading: boolean;
   error?: string | null;
 };
 const initialState: AuthState = {
-  accessToken: null,
+  token: null,
   userEmail: null,
   loading: false,
   error: null,
@@ -15,15 +15,15 @@ const slice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    setAccessToken(state, action: PayloadAction<string>) {
-      state.accessToken = action.payload;
+    settoken(state, action: PayloadAction<string>) {
+      state.token = action.payload;
       state.error = null;
     },
     setUser(state, action: PayloadAction<{ email: string } | null>) {
       state.userEmail = action.payload?.email ?? null;
     },
     logoutLocal(state) {
-      state.accessToken = null;
+      state.token = null;
       state.userEmail = null;
       state.error = null;
     },

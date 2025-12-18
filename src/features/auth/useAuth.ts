@@ -5,7 +5,7 @@ import { authActions } from "./authSlice";
 
 // 1. Define the expected shape of your API response
 interface LoginResponse {
-  accessToken: string;
+  token: string;
   email: string;
 }
 
@@ -17,14 +17,14 @@ export function useAuth() {
     try {
       // 2. Add Generic Type <LoginResponse> to .post()
       const resp = await api.post<LoginResponse>(
-        "/api/auth/login",
+        "/auth/login",
         { email, password },
         { withCredentials: true }
       );
 
-      const { accessToken, email: userEmail } = resp.data;
+      const { token, email: userEmail } = resp.data;
 
-      dispatch(authActions.setAccessToken(accessToken));
+      dispatch(authActions.settoken(token));
       dispatch(authActions.setUser({ email: userEmail }));
 
       return true; // Return success status
@@ -48,7 +48,7 @@ export function useAuth() {
 
   async function logout() {
     try {
-      await api.post("/api/auth/logout");
+      await api.post("/auth/logout");
     } catch (error) {
       console.error("Logout failed", error);
     } finally {
