@@ -5,6 +5,7 @@ export type BoardDto = {
   id: number;
   name: string;
   createdBy?: string;
+  memberEmails?: string[];
 };
 
 // 1. Fetch all boards
@@ -18,7 +19,10 @@ export const createBoard = createAsyncThunk(
   "boards/create",
   async (name: string) => {
     // Assuming your API expects { name: "..." } and returns the created Board object
-    const resp = await api.post<BoardDto>("/api/boards", { name });
+    const resp = await api.post<BoardDto>("/api/boards", {
+      name,
+      memberEmails: [],
+    });
     return resp.data;
   }
 );

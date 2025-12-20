@@ -21,11 +21,26 @@ interface MoveTaskPayload {
   targetIndex: number;
 }
 
+// 1. Fetch Tasks Thunk (Existing)
 export const fetchTasksForList = createAsyncThunk(
   "tasks/fetchForList",
   async (listId: number) => {
     const resp = await api.get<TaskDto[]>(`/api/lists/${listId}/tasks`);
     return { listId, tasks: resp.data };
+  }
+);
+
+// 2. [NEW] Create Task Thunk
+export const createTask = createAsyncThunk(
+  "tasks/create",
+  async ({ listId, title }: { listId: number; title: string }) => {
+    // We send a high position value (like 65535) to ensure it goes to the bottom
+    // Or let the backend handle the logic.
+    const resp = await api.post<TaskDto>(`/api/lists/${listId}/tasks`, {
+      title,
+      position: 65535,
+    });
+    return resp.data;
   }
 );
 
@@ -57,7 +72,6 @@ const slice = createSlice({
       if (fromList === toList) {
         // SAME LIST: We insert back into the SAME array we just spliced from
         sourceList.splice(targetIndex, 0, task);
-
         // Recalculate positions for this list only
         sourceList.forEach((t, i) => (t.position = i));
       } else {
@@ -65,7 +79,6 @@ const slice = createSlice({
         const targetList = state.byList[toList];
         if (targetList) {
           targetList.splice(targetIndex, 0, task);
-
           // Recalculate positions for both lists
           sourceList.forEach((t, i) => (t.position = i));
           targetList.forEach((t, i) => (t.position = i));
@@ -74,13 +87,25 @@ const slice = createSlice({
     },
   },
   extraReducers: (builder) => {
+    // [Existing] Fetch Fulfilled
     builder.addCase(fetchTasksForList.fulfilled, (state, action) => {
-      // 5. CRITICAL: Always sort by position when fetching
-      // This ensures the initial render matches the visual order
       const sortedTasks = action.payload.tasks.sort(
         (a, b) => a.position - b.position
       );
       state.byList[action.payload.listId] = sortedTasks;
+    });
+
+    // 3. [NEW] Handle Create Task Success
+    builder.addCase(createTask.fulfilled, (state, action) => {
+      const newTask = action.payload;
+
+      // Initialize array if it doesn't exist yet (safety check)
+      if (!state.byList[newTask.listId]) {
+        state.byList[newTask.listId] = [];
+      }
+
+      // Add the new task to the end of the list
+      state.byList[newTask.listId].push(newTask);
     });
   },
 });
