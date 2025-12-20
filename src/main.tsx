@@ -12,6 +12,9 @@ import { store } from "./app/store";
 
 // Features
 import Login from "./features/auth/Login";
+import Register from "./features/auth/Register";
+import ForgotPassword from "./features/auth/ForgotPassword";
+import ResetPassword from "./features/auth/ResetPassword";
 import BoardView from "./features/boards/BoardView";
 import BoardsList from "./features/boards/BoardsList";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -23,7 +26,18 @@ const router = createBrowserRouter([
     path: "/login",
     element: <Login />,
   },
-
+  {
+    path: "/register", // <--- Add this block
+    element: <Register />,
+  },
+  {
+    path: "/forgot-password", // <--- NEW
+    element: <ForgotPassword />,
+  },
+  {
+    path: "/reset-password", // <--- NEW
+    element: <ResetPassword />,
+  },
   // 2. Protected Routes: Wrapped in Layout (Header + Outlet)
   {
     path: "/",

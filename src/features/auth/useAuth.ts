@@ -57,5 +57,66 @@ export function useAuth() {
     }
   }
 
-  return { login, logout };
+  async function forgotPassword(email: string): Promise<boolean> {
+    dispatch(authActions.setLoading(true));
+    try {
+      await api.post("/auth/forgot-password", { email });
+      // We don't return "false" on error here usually, so the user always sees success
+      return true;
+    } catch (error) {
+      // In a real app, you might log this silently
+      console.error("Forgot password error:", error);
+      return false;
+    } finally {
+      dispatch(authActions.setLoading(false));
+    }
+  }
+
+  async function resetPassword(
+    token: string,
+    newPassword: string
+  ): Promise<boolean> {
+    dispatch(authActions.setLoading(true));
+    try {
+      await api.post("/auth/reset-password", { token, newPassword });
+      return true;
+    } catch (error) {
+      let msg = "Failed to reset password";
+      if (error instanceof AxiosError)
+        msg = error.response?.data?.message || msg;
+      dispatch(authActions.setError(msg));
+      return false;
+    } finally {
+      dispatch(authActions.setLoading(false));
+    }
+  }
+
+  async function register(
+    username: string,
+    email: string,
+    password: string
+  ): Promise<boolean> {
+    dispatch(authActions.setLoading(true));
+    try {
+      await api.post("/auth/register", {
+        username,
+        email,
+        password,
+      });
+
+      // Assuming registration doesn't auto-login, we just return true
+      return true;
+    } catch (error) {
+      let errorMessage = "Registration failed";
+      if (error instanceof AxiosError) {
+        errorMessage = error.response?.data?.message ?? errorMessage;
+      }
+      dispatch(authActions.setError(errorMessage));
+      return false;
+    } finally {
+      dispatch(authActions.setLoading(false));
+    }
+  }
+
+  return { login, logout, register, forgotPassword, resetPassword };
 }
