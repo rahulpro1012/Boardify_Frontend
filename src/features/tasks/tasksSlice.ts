@@ -44,6 +44,16 @@ export const createTask = createAsyncThunk(
   }
 );
 
+// 3. NEW: Update Task (Description, Title, etc.)
+export const updateTask = createAsyncThunk(
+  "tasks/update",
+  async ({ taskId, data }: { taskId: number; data: Partial<TaskDto> }) => {
+    // We use PATCH to update only specific fields
+    const resp = await api.patch<TaskDto>(`/api/tasks/${taskId}`, data);
+    return resp.data;
+  }
+);
+
 const slice = createSlice({
   name: "tasks",
   initialState: {
@@ -88,11 +98,15 @@ const slice = createSlice({
   },
   extraReducers: (builder) => {
     // [Existing] Fetch Fulfilled
-    builder.addCase(fetchTasksForList.fulfilled, (state, action) => {
-      const sortedTasks = action.payload.tasks.sort(
-        (a, b) => a.position - b.position
-      );
-      state.byList[action.payload.listId] = sortedTasks;
+    builder.addCase(updateTask.fulfilled, (state, action) => {
+      const updatedTask = action.payload;
+      const list = state.byList[updatedTask.listId];
+      if (list) {
+        const index = list.findIndex((t) => t.id === updatedTask.id);
+        if (index !== -1) {
+          list[index] = updatedTask;
+        }
+      }
     });
 
     // 3. [NEW] Handle Create Task Success

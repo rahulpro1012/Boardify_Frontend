@@ -3,12 +3,14 @@ import authReducer from "../features/auth/authSlice";
 import boardsReducer from "../features/boards/boardsSlice";
 import listsReducer from "../features/lists/listsSlice";
 import tasksReducer from "../features/tasks/tasksSlice";
+import commentsReducer from "../features/comments/commentsSlice";
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     boards: boardsReducer,
     lists: listsReducer,
     tasks: tasksReducer,
+    comments: commentsReducer,
   },
 });
 export type RootState = ReturnType<typeof store.getState>;
