@@ -4,6 +4,7 @@ import { DragDropContext, Droppable, type DropResult } from "@hello-pangea/dnd";
 import UserAvatar from "../../components/UserAvatar";
 
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import toast from "react-hot-toast";
 import {
   fetchLists,
   clearLists,
@@ -75,9 +76,16 @@ export default function BoardView() {
   // --- HANDLERS ---
   const handleRenameBoard = async () => {
     if (currentBoard && titleInput.trim() && titleInput !== currentBoard.name) {
-      await dispatch(
-        updateBoard({ boardId: currentBoard.id, name: titleInput })
-      );
+      try {
+        await dispatch(
+          updateBoard({ boardId: currentBoard.id, name: titleInput })
+        ).unwrap();
+        toast.success("Board renamed");
+      } catch (err) {
+        toast.error("Failed to rename board");
+        console.error(err);
+        setTitleInput(currentBoard.name);
+      }
     }
     setIsEditingTitle(false);
   };
@@ -85,11 +93,17 @@ export default function BoardView() {
   const handleCreateList = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newListTitle.trim() || !boardId) return;
-    await dispatch(
-      createList({ boardId: Number(boardId), name: newListTitle })
-    );
-    setNewListTitle("");
-    setIsAddingList(false);
+    try {
+      await dispatch(
+        createList({ boardId: Number(boardId), name: newListTitle })
+      ).unwrap();
+      toast.success("List created");
+      setNewListTitle("");
+      setIsAddingList(false);
+    } catch (err) {
+      toast.error("Failed to create list");
+      console.error(err);
+    }
   };
 
   async function onDragEnd(result: DropResult) {

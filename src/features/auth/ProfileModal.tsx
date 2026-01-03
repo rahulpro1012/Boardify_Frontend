@@ -1,5 +1,6 @@
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { logout } from "./authSlice";
+import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
 interface Props {
@@ -15,6 +16,7 @@ export default function ProfileModal({ onClose }: Props) {
   const handleLogout = () => {
     if (confirm("Are you sure you want to logout?")) {
       dispatch(logout());
+      toast.success("Logged out");
       navigate("/login");
     }
   };

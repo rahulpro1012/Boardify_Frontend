@@ -62,12 +62,18 @@ export default function BoardInfoModal({ board, onClose }: Props) {
     if (!confirm(`Remove ${emailToRemove} from this board?`)) return;
 
     // FIX: Dispatch the specific 'removeBoardMember' action
-    await dispatch(
-      removeBoardMember({
-        boardId: board.id,
-        email: emailToRemove,
-      })
-    );
+    try {
+      await dispatch(
+        removeBoardMember({
+          boardId: board.id,
+          email: emailToRemove,
+        })
+      ).unwrap();
+      toast.success(`Removed ${emailToRemove}`);
+    } catch (err) {
+      toast.error("Failed to remove member");
+      console.error(err);
+    }
   };
 
   const handleDeleteBoard = async () => {
@@ -76,9 +82,15 @@ export default function BoardInfoModal({ board, onClose }: Props) {
         "Are you sure? This will delete the board and all its tasks permanently."
       )
     ) {
-      await dispatch(deleteBoard(board.id));
-      onClose();
-      navigate("/");
+      try {
+        await dispatch(deleteBoard(board.id)).unwrap();
+        toast.success("Board deleted");
+        onClose();
+        navigate("/");
+      } catch (err) {
+        toast.error("Failed to delete board");
+        console.error(err);
+      }
     }
   };
 

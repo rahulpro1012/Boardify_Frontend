@@ -33,15 +33,15 @@ export default function BoardsList() {
     }
   }, [createStatus, dispatch]);
 
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newBoardName.trim()) {
       try {
-        dispatch(createBoard(newBoardName));
-        toast.success("Board created successfully!"); // Success
+        await dispatch(createBoard(newBoardName)).unwrap();
+        toast.success("Board created successfully!");
       } catch (err) {
-        toast.error("Failed to create board. Please try again."); // Error
-        console.log(err);
+        toast.error("Failed to create board. Please try again.");
+        console.error(err);
       }
     }
   };

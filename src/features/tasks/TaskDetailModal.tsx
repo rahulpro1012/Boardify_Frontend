@@ -42,16 +42,23 @@ export default function TaskDetailModal({ task, onClose }: Props) {
   // [NEW] Handle Title Rename
   const handleTitleSave = async () => {
     if (titleInput.trim() && titleInput !== task.title) {
-      await dispatch(
-        updateTask({
-          taskId: task.id,
-          data: {
-            title: titleInput, // Update Title
-            description: task.description,
-            assignedTo: task.assignedTo,
-          },
-        })
-      );
+      try {
+        await dispatch(
+          updateTask({
+            taskId: task.id,
+            data: {
+              title: titleInput, // Update Title
+              description: task.description,
+              assignedTo: task.assignedTo,
+            },
+          })
+        ).unwrap();
+        toast.success("Title updated");
+      } catch (err) {
+        toast.error("Failed to update title");
+        console.error(err);
+        setTitleInput(task.title);
+      }
     } else {
       // Revert if empty
       setTitleInput(task.title);
@@ -77,22 +84,36 @@ export default function TaskDetailModal({ task, onClose }: Props) {
   };
 
   const handleAssignMember = async (email: string) => {
-    await dispatch(
-      updateTask({
-        taskId: task.id,
-        data: {
-          assignedTo: email,
-        },
-      })
-    );
-    setShowAssigneeMenu(false);
+    try {
+      await dispatch(
+        updateTask({
+          taskId: task.id,
+          data: {
+            assignedTo: email,
+          },
+        })
+      ).unwrap();
+      toast.success("Assignee updated");
+      setShowAssigneeMenu(false);
+    } catch (err) {
+      toast.error("Failed to assign member");
+      console.error(err);
+    }
   };
 
   const handleSendComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
-    await dispatch(createComment({ taskId: task.id, text: newComment }));
-    setNewComment("");
+    try {
+      await dispatch(
+        createComment({ taskId: task.id, text: newComment })
+      ).unwrap();
+      toast.success("Comment added");
+      setNewComment("");
+    } catch (err) {
+      toast.error("Failed to add comment");
+      console.error(err);
+    }
   };
 
   const handleDeleteTask = async () => {

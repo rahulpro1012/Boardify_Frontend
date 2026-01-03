@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { useAppDispatch } from "../../app/hooks";
+import toast from "react-hot-toast";
 import { type ListDto, updateList, deleteList } from "./listsSlice";
 import { createTask, type TaskDto } from "../tasks/tasksSlice";
 import ListDeleteModal from "./ListDeleteModal";
@@ -40,23 +41,44 @@ export default function ListColumn({
       return;
     }
     if (titleInput !== list.name) {
-      await dispatch(
-        updateList({ boardId, listId: list.id, name: titleInput })
-      );
+      try {
+        await dispatch(
+          updateList({ boardId, listId: list.id, name: titleInput })
+        ).unwrap();
+        toast.success("List renamed");
+      } catch (err) {
+        toast.error("Failed to rename list");
+        console.error(err);
+        setTitleInput(list.name);
+      }
     }
     setIsRenaming(false);
   };
 
   const confirmDelete = async () => {
-    await dispatch(deleteList({ boardId, listId: list.id }));
+    try {
+      await dispatch(deleteList({ boardId, listId: list.id })).unwrap();
+      toast.success("List deleted");
+    } catch (err) {
+      toast.error("Failed to delete list");
+      console.error(err);
+    }
   };
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
-    await dispatch(createTask({ listId: list.id, title: newTaskTitle }));
-    setNewTaskTitle("");
-    taskInputRef.current?.focus();
+    try {
+      await dispatch(
+        createTask({ listId: list.id, title: newTaskTitle })
+      ).unwrap();
+      toast.success("Card added");
+      setNewTaskTitle("");
+      taskInputRef.current?.focus();
+    } catch (err) {
+      toast.error("Failed to add card");
+      console.error(err);
+    }
   };
 
   useEffect(() => {
