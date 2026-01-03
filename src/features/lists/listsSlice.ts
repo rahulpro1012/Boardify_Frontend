@@ -21,7 +21,7 @@ export const fetchLists = createAsyncThunk(
   }
 );
 
-// 2. NEW: Create List Thunk
+// 2. Create List
 export const createList = createAsyncThunk(
   "lists/create",
   async ({ boardId, name }: { boardId: number; name: string }) => {
@@ -32,13 +32,61 @@ export const createList = createAsyncThunk(
   }
 );
 
+// 3. [NEW] Update List (Rename)
+export const updateList = createAsyncThunk(
+  "lists/update",
+  async ({
+    boardId,
+    listId,
+    name,
+  }: {
+    boardId: number;
+    listId: number;
+    name: string;
+  }) => {
+    const resp = await api.put<ListDto>(
+      `/api/boards/${boardId}/lists/${listId}`,
+      { name }
+    );
+    return resp.data;
+  }
+);
+
+// 4. [NEW] Delete List
+export const deleteList = createAsyncThunk(
+  "lists/delete",
+  async ({ boardId, listId }: { boardId: number; listId: number }) => {
+    await api.delete(`/api/boards/${boardId}/lists/${listId}`);
+    return listId;
+  }
+);
+
+// 5. [NEW] Reorder List
+export const reorderList = createAsyncThunk(
+  "lists/reorder",
+  async ({
+    boardId,
+    listId,
+    targetIndex,
+  }: {
+    boardId: number;
+    listId: number;
+    targetIndex: number;
+  }) => {
+    await api.patch(`/api/boards/${boardId}/lists/${listId}/reorder`, {
+      targetIndex,
+    });
+    return { listId, targetIndex }; // Return data to update UI if needed
+  }
+);
+
 const slice = createSlice({
   name: "lists",
   initialState: {
     items: [] as ListDto[],
     loading: false,
     error: null as string | null,
-    createStatus: "idle" as "idle" | "loading" | "failed", // Track creation
+    createStatus: "idle",
   },
   reducers: {
     clearLists: (state) => {
@@ -47,38 +95,41 @@ const slice = createSlice({
       state.error = null;
       state.createStatus = "idle";
     },
-    moveTaskLocal: (state) => {
-      // Placeholder if you need list-specific moves
+    // [NEW] Optimistic Reorder (Move column instantly)
+    moveListLocal: (
+      state,
+      action: PayloadAction<{ fromIndex: number; toIndex: number }>
+    ) => {
+      const { fromIndex, toIndex } = action.payload;
+      const list = state.items[fromIndex];
+      state.items.splice(fromIndex, 1);
+      state.items.splice(toIndex, 0, list);
     },
   },
   extraReducers: (builder) => {
-    // --- Fetch Lists ---
-    builder.addCase(fetchLists.pending, (state) => {
-      state.loading = true;
-      state.error = null;
-    });
+    // Fetch
     builder.addCase(fetchLists.fulfilled, (state, action) => {
       state.loading = false;
       state.items = action.payload.sort((a, b) => a.position - b.position);
     });
-    builder.addCase(fetchLists.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.error.message ?? "Failed to load lists";
+
+    // Create
+    builder.addCase(createList.fulfilled, (state, action) => {
+      state.items.push(action.payload);
     });
 
-    // --- Create List ---
-    builder.addCase(createList.pending, (state) => {
-      state.createStatus = "loading";
+    // Update (Rename)
+    builder.addCase(updateList.fulfilled, (state, action) => {
+      const index = state.items.findIndex((l) => l.id === action.payload.id);
+      if (index !== -1) state.items[index] = action.payload;
     });
-    builder.addCase(createList.fulfilled, (state, action) => {
-      state.createStatus = "idle";
-      state.items.push(action.payload); // Add new list to UI immediately
-    });
-    builder.addCase(createList.rejected, (state) => {
-      state.createStatus = "failed";
+
+    // Delete
+    builder.addCase(deleteList.fulfilled, (state, action) => {
+      state.items = state.items.filter((l) => l.id !== action.payload);
     });
   },
 });
 
-export const { clearLists } = slice.actions;
+export const { clearLists, moveListLocal } = slice.actions;
 export default slice.reducer;

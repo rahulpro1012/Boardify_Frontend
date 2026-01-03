@@ -1,13 +1,12 @@
 import axios, {
   type AxiosInstance,
   type InternalAxiosRequestConfig,
-  // type AxiosResponse,
   AxiosError,
 } from "axios";
 import { store } from "../app/store";
-import { authActions } from "../features/auth/authSlice";
+// FIX: Import the actions directly, not the type
+import { setToken, logout } from "../features/auth/authSlice";
 
-// 1. Better Type Definitions
 interface RefreshResponse {
   token: string;
 }
@@ -20,17 +19,12 @@ const api: AxiosInstance = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// 2. Concurrency handling variables
+// Concurrency handling variable
 let refreshPromise: Promise<string | null> | null = null;
 
-// 3. Enhanced Refresh Logic
 async function refreshtoken(): Promise<string | null> {
-  // If a refresh is already in progress, return the existing promise
-  if (refreshPromise) {
-    return refreshPromise;
-  }
+  if (refreshPromise) return refreshPromise;
 
-  // Create a new promise for the refresh process
   refreshPromise = (async () => {
     try {
       const resp = await axios.post<RefreshResponse>(
@@ -42,18 +36,18 @@ async function refreshtoken(): Promise<string | null> {
       const { token } = resp.data;
 
       if (token) {
-        store.dispatch(authActions.settoken(token));
+        // FIX: Dispatch the imported action directly
+        store.dispatch(setToken(token));
         return token;
       }
 
-      // If response was ok but no token, force logout
       throw new Error("No access token found in refresh response");
     } catch (err) {
       console.error("Token refresh failed. Logging out.", err);
-      store.dispatch(authActions.logoutLocal());
+      // FIX: Dispatch the imported action directly
+      store.dispatch(logout());
       return null;
     } finally {
-      // Reset the promise so future 401s can trigger a new refresh
       refreshPromise = null;
     }
   })();
@@ -61,13 +55,11 @@ async function refreshtoken(): Promise<string | null> {
   return refreshPromise;
 }
 
-// 4. Request Interceptor
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const state = store.getState();
     const token = state.auth.token;
 
-    // Check if headers exist before assigning
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -76,7 +68,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 5. Response Interceptor
 api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
@@ -85,8 +76,7 @@ api.interceptors.response.use(
     };
     const status = error.response?.status;
 
-    // 1. Check if the error came from the LOGIN endpoint
-    // We don't want to refresh if the user simply typed the wrong password!
+    // Avoid infinite loops on login/register
     if (
       originalRequest.url?.includes("/auth/login") ||
       originalRequest.url?.includes("/auth/register")
@@ -94,7 +84,6 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // 2. Standard 401 check
     if (status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
 

@@ -5,7 +5,7 @@ export type BoardDto = {
   id: number;
   name: string;
   createdBy?: string;
-  memberEmails?: string[];
+  members?: string[];
 };
 
 // --- THUNKS ---
@@ -31,7 +31,7 @@ export const createBoard = createAsyncThunk(
   async (name: string) => {
     const resp = await api.post<BoardDto>("/api/boards", {
       name,
-      memberEmails: [],
+      members: [],
     });
     return resp.data;
   }
@@ -153,19 +153,17 @@ const slice = createSlice({
     builder.addCase(addBoardMember.fulfilled, (state, action) => {
       if (state.currentBoard) {
         // Initialize array if undefined
-        if (!state.currentBoard.memberEmails)
-          state.currentBoard.memberEmails = [];
-        state.currentBoard.memberEmails.push(action.payload);
+        if (!state.currentBoard.members) state.currentBoard.members = [];
+        state.currentBoard.members.push(action.payload);
       }
     });
 
     // --- Remove Member ---
     builder.addCase(removeBoardMember.fulfilled, (state, action) => {
-      if (state.currentBoard && state.currentBoard.memberEmails) {
-        state.currentBoard.memberEmails =
-          state.currentBoard.memberEmails.filter(
-            (email) => email !== action.payload
-          );
+      if (state.currentBoard && state.currentBoard.members) {
+        state.currentBoard.members = state.currentBoard.members.filter(
+          (email) => email !== action.payload
+        );
       }
     });
   },

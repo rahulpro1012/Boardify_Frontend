@@ -1,48 +1,57 @@
 import { useDispatch } from "react-redux";
-import { AxiosError } from "axios"; // Import AxiosError type
+import { AxiosError } from "axios";
+// Path: Go up 2 levels (features -> src) then into api
 import api from "../../api/apiClient";
-import { authActions } from "./authSlice";
 
-// 1. Define the expected shape of your API response
+// Path: Same folder
+import {
+  setToken,
+  logout as logoutAction,
+  setLoading,
+  setError,
+  fetchCurrentUser,
+} from "./authSlice";
+
+// Path: Go up 2 levels (features -> src) then into app
+import { type AppDispatch } from "../../app/store";
+
 interface LoginResponse {
   token: string;
   email: string;
 }
 
 export function useAuth() {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
 
   async function login(email: string, password: string): Promise<boolean> {
-    dispatch(authActions.setLoading(true));
+    dispatch(setLoading(true));
     try {
-      // 2. Add Generic Type <LoginResponse> to .post()
       const resp = await api.post<LoginResponse>(
         "/auth/login",
         { email, password },
         { withCredentials: true }
       );
 
-      const { token, email: userEmail } = resp.data;
+      const { token } = resp.data;
 
-      dispatch(authActions.settoken(token));
-      dispatch(authActions.setUser({ email: userEmail }));
+      // 1. Save Token
+      dispatch(setToken(token));
 
-      return true; // Return success status
+      // 2. Fetch full user profile immediately
+      await dispatch(fetchCurrentUser());
+
+      return true;
     } catch (error) {
-      // 3. Fix "Unexpected any" by narrowing the type
       let errorMessage = "Login failed";
-
       if (error instanceof AxiosError) {
-        // Now TypeScript knows 'response' exists on this error object
         errorMessage = error.response?.data?.message ?? errorMessage;
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
-
-      dispatch(authActions.setError(errorMessage));
-      return false; // Return failure status
+      dispatch(setError(errorMessage));
+      return false;
     } finally {
-      dispatch(authActions.setLoading(false));
+      dispatch(setLoading(false));
     }
   }
 
@@ -52,23 +61,20 @@ export function useAuth() {
     } catch (error) {
       console.error("Logout failed", error);
     } finally {
-      // Always clear local state, even if the API call failed
-      dispatch(authActions.logoutLocal());
+      dispatch(logoutAction());
     }
   }
 
   async function forgotPassword(email: string): Promise<boolean> {
-    dispatch(authActions.setLoading(true));
+    dispatch(setLoading(true));
     try {
       await api.post("/auth/forgot-password", { email });
-      // We don't return "false" on error here usually, so the user always sees success
       return true;
     } catch (error) {
-      // In a real app, you might log this silently
       console.error("Forgot password error:", error);
       return false;
     } finally {
-      dispatch(authActions.setLoading(false));
+      dispatch(setLoading(false));
     }
   }
 
@@ -76,7 +82,7 @@ export function useAuth() {
     token: string,
     newPassword: string
   ): Promise<boolean> {
-    dispatch(authActions.setLoading(true));
+    dispatch(setLoading(true));
     try {
       await api.post("/auth/reset-password", { token, newPassword });
       return true;
@@ -84,10 +90,10 @@ export function useAuth() {
       let msg = "Failed to reset password";
       if (error instanceof AxiosError)
         msg = error.response?.data?.message || msg;
-      dispatch(authActions.setError(msg));
+      dispatch(setError(msg));
       return false;
     } finally {
-      dispatch(authActions.setLoading(false));
+      dispatch(setLoading(false));
     }
   }
 
@@ -96,25 +102,23 @@ export function useAuth() {
     email: string,
     password: string
   ): Promise<boolean> {
-    dispatch(authActions.setLoading(true));
+    dispatch(setLoading(true));
     try {
       await api.post("/auth/register", {
         username,
         email,
         password,
       });
-
-      // Assuming registration doesn't auto-login, we just return true
       return true;
     } catch (error) {
       let errorMessage = "Registration failed";
       if (error instanceof AxiosError) {
         errorMessage = error.response?.data?.message ?? errorMessage;
       }
-      dispatch(authActions.setError(errorMessage));
+      dispatch(setError(errorMessage));
       return false;
     } finally {
-      dispatch(authActions.setLoading(false));
+      dispatch(setLoading(false));
     }
   }
 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { fetchComments, createComment } from "../comments/commentsSlice";
-import { updateTask, type TaskDto } from "./tasksSlice";
+import { updateTask, deleteTask, type TaskDto } from "./tasksSlice";
+import UserAvatar from "../../components/UserAvatar";
 
 interface Props {
   task: TaskDto;
@@ -11,41 +12,141 @@ interface Props {
 export default function TaskDetailModal({ task, onClose }: Props) {
   const dispatch = useAppDispatch();
   const comments = useAppSelector((s) => s.comments.byTask[task.id] || []);
+  const currentBoard = useAppSelector((s) => s.boards.currentBoard);
+  const currentUser = useAppSelector((s) => s.auth.user);
 
-  // Local state for editing
+  const allLists = useAppSelector((s) => s.lists.items);
+  const currentList = allLists.find((l) => l.id === task.listId);
+  const allMembers = currentBoard?.members || [];
+
+  // --- LOCAL STATE ---
+  // 1. Title Editing State [NEW]
+  const [titleInput, setTitleInput] = useState(task.title);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+
+  // 2. Description Editing State
   const [description, setDescription] = useState(task.description || "");
   const [isEditingDesc, setIsEditingDesc] = useState(false);
-  const [newComment, setNewComment] = useState("");
 
-  // Load comments when modal opens
+  // 3. Comment/Assignee State
+  const [newComment, setNewComment] = useState("");
+  const [showAssigneeMenu, setShowAssigneeMenu] = useState(false);
+
   useEffect(() => {
     dispatch(fetchComments(task.id));
   }, [dispatch, task.id]);
 
+  // --- HANDLERS ---
+
+  // [NEW] Handle Title Rename
+  const handleTitleSave = async () => {
+    if (titleInput.trim() && titleInput !== task.title) {
+      await dispatch(
+        updateTask({
+          taskId: task.id,
+          data: {
+            title: titleInput, // Update Title
+            description: task.description,
+            assignedTo: task.assignedTo,
+          },
+        })
+      );
+    } else {
+      // Revert if empty
+      setTitleInput(task.title);
+    }
+    setIsEditingTitle(false);
+  };
+
   const handleSaveDescription = async () => {
     if (description !== task.description) {
-      await dispatch(updateTask({ taskId: task.id, data: { description } }));
+      await dispatch(
+        updateTask({
+          taskId: task.id,
+          data: {
+            title: task.title,
+            description: description,
+            assignedTo: task.assignedTo,
+          },
+        })
+      );
     }
     setIsEditingDesc(false);
+  };
+
+  const handleAssignMember = async (email: string) => {
+    await dispatch(
+      updateTask({
+        taskId: task.id,
+        data: {
+          assignedTo: email,
+        },
+      })
+    );
+    setShowAssigneeMenu(false);
   };
 
   const handleSendComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
-    await dispatch(createComment({ taskId: task.id, content: newComment }));
+    await dispatch(createComment({ taskId: task.id, text: newComment }));
     setNewComment("");
+  };
+
+  const handleDeleteTask = async () => {
+    if (confirm("Are you sure you want to delete this task?")) {
+      await dispatch(deleteTask({ taskId: task.id, listId: task.listId }));
+      onClose();
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-200 flex justify-between items-start bg-gray-50">
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">{task.title}</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              in list <span className="font-medium underline">Task List</span>
-            </p>
+      <div className="absolute inset-0" onClick={onClose}></div>
+
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden animate-fade-in relative z-10">
+        {/* --- HEADER --- */}
+        <div className="p-6 border-b border-gray-200 flex justify-between items-start bg-gray-50 shrink-0">
+          <div className="w-full mr-8">
+            {/* [NEW] Editable Title UI */}
+            {isEditingTitle ? (
+              <input
+                autoFocus
+                className="text-xl font-bold text-gray-800 w-full bg-white border-2 border-blue-500 rounded px-2 py-1 outline-none shadow-sm"
+                value={titleInput}
+                onChange={(e) => setTitleInput(e.target.value)}
+                onBlur={handleTitleSave}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleTitleSave();
+                }}
+              />
+            ) : (
+              <h2
+                onClick={() => setIsEditingTitle(true)}
+                className="text-xl font-bold text-gray-800 cursor-pointer hover:bg-gray-200 rounded px-2 -ml-2 py-1 transition-colors border border-transparent hover:border-gray-300 w-fit"
+                title="Click to rename"
+              >
+                {task.title}
+              </h2>
+            )}
+
+            <div className="flex items-center gap-2 mt-2 px-1">
+              <span className="text-sm text-gray-500">
+                in list{" "}
+                <span className="font-semibold text-gray-700 underline decoration-gray-300 underline-offset-2">
+                  {currentList?.name || "Unknown List"}
+                </span>
+              </span>
+
+              {task.assignedTo && (
+                <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-100 shadow-sm pl-1 ml-2">
+                  <UserAvatar email={task.assignedTo} size="sm" />
+                  <span className="text-xs font-semibold">
+                    {task.assignedTo}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -67,17 +168,17 @@ export default function TaskDetailModal({ task, onClose }: Props) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 flex gap-8">
-          {/* LEFT COLUMN: Description & Activity */}
-          <div className="flex-1 space-y-8">
-            {/* Description Section */}
+        <div className="flex-1 overflow-y-auto p-8 flex flex-col md:flex-row gap-8">
+          {/* Left Column */}
+          <div className="flex-1 space-y-8 min-w-0">
+            {/* Description */}
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <svg
-                  className="w-5 h-5 text-blue-600"
+                  className="w-5 h-5 text-gray-500"
                   fill="none"
-                  stroke="currentColor"
                   viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
                   <path
                     strokeLinecap="round"
@@ -90,11 +191,10 @@ export default function TaskDetailModal({ task, onClose }: Props) {
                   Description
                 </h3>
               </div>
-
               {isEditingDesc ? (
                 <div className="space-y-2">
                   <textarea
-                    className="w-full p-4 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none min-h-[120px] text-gray-700 leading-relaxed"
+                    className="w-full p-4 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none min-h-[120px] text-gray-700 text-sm leading-relaxed shadow-sm"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     autoFocus
@@ -103,13 +203,13 @@ export default function TaskDetailModal({ task, onClose }: Props) {
                   <div className="flex gap-2">
                     <button
                       onClick={handleSaveDescription}
-                      className="px-4 py-2 bg-blue-600 text-white rounded font-medium text-sm hover:bg-blue-700"
+                      className="px-4 py-1.5 bg-blue-600 text-white rounded font-medium text-sm hover:bg-blue-700 transition-colors shadow-sm"
                     >
                       Save
                     </button>
                     <button
                       onClick={() => setIsEditingDesc(false)}
-                      className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium text-sm"
+                      className="px-4 py-1.5 text-gray-600 hover:bg-gray-100 rounded font-medium text-sm transition-colors"
                     >
                       Cancel
                     </button>
@@ -118,10 +218,10 @@ export default function TaskDetailModal({ task, onClose }: Props) {
               ) : (
                 <div
                   onClick={() => setIsEditingDesc(true)}
-                  className={`p-4 rounded-lg cursor-pointer hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all min-h-[80px] ${
+                  className={`p-4 rounded-lg cursor-pointer hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all min-h-[80px] text-sm leading-relaxed ${
                     description
                       ? "text-gray-700"
-                      : "text-gray-400 italic bg-gray-50/50"
+                      : "text-gray-500 italic bg-gray-50"
                   }`}
                 >
                   {description || "Add a more detailed description..."}
@@ -129,14 +229,14 @@ export default function TaskDetailModal({ task, onClose }: Props) {
               )}
             </div>
 
-            {/* Comments Section */}
+            {/* Comments */}
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <svg
-                  className="w-5 h-5 text-blue-600"
+                  className="w-5 h-5 text-gray-500"
                   fill="none"
-                  stroke="currentColor"
                   viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
                   <path
                     strokeLinecap="round"
@@ -150,62 +250,66 @@ export default function TaskDetailModal({ task, onClose }: Props) {
                 </h3>
               </div>
 
-              {/* Add Comment Input */}
               <div className="flex gap-3 mb-6">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">
-                  YO
-                </div>
-                <div className="flex-1">
-                  <form onSubmit={handleSendComment} className="relative">
-                    <input
-                      type="text"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm transition-all pr-12"
-                      placeholder="Write a comment..."
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                    />
-                    <button
-                      type="submit"
-                      disabled={!newComment.trim()}
-                      className="absolute right-2 top-2 p-1.5 bg-gray-100 hover:bg-blue-600 hover:text-white rounded text-gray-500 transition-colors disabled:opacity-50"
+                <UserAvatar
+                  email={currentUser?.email}
+                  size="md"
+                  className="mt-1"
+                />
+                <form onSubmit={handleSendComment} className="relative flex-1">
+                  <input
+                    type="text"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-50 outline-none pr-12 text-sm transition-all shadow-sm"
+                    placeholder="Write a comment..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!newComment.trim()}
+                    className="absolute right-2 top-2 p-1.5 bg-gray-100 hover:bg-blue-600 hover:text-white rounded transition-colors disabled:opacity-50 text-gray-500"
+                  >
+                    <svg
+                      className="w-4 h-4 rotate-90"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
                     >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                        />
-                      </svg>
-                    </button>
-                  </form>
-                </div>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                      />
+                    </svg>
+                  </button>
+                </form>
               </div>
 
-              {/* Comments List */}
-              <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+              <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                {comments.length === 0 && (
+                  <div className="text-center py-4 text-gray-400 text-sm italic">
+                    No activity yet.
+                  </div>
+                )}
                 {comments.map((comment) => (
                   <div key={comment.id} className="flex gap-3 group">
-                    {/* Avatar */}
-                    <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-700 font-bold text-xs shrink-0 mt-1">
-                      {comment.authorEmail?.[0].toUpperCase() || "?"}
-                    </div>
-                    <div>
+                    <UserAvatar
+                      email={comment.author}
+                      size="md"
+                      className="mt-1 shadow-sm"
+                    />
+                    <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sm text-gray-900">
-                          {comment.authorEmail}
+                          {comment.author}
                         </span>
                         <span className="text-xs text-gray-400">
                           {new Date(comment.createdAt).toLocaleString()}
                         </span>
                       </div>
-                      <div className="p-3 bg-white border border-gray-200 rounded-lg rounded-tl-none mt-1 shadow-sm text-gray-700 text-sm">
-                        {comment.content}
+                      <div className="p-3 bg-white border border-gray-200 rounded-lg rounded-tl-none mt-1 shadow-sm text-sm text-gray-700 group-hover:border-blue-200 transition-colors">
+                        {comment.text}
                       </div>
                     </div>
                   </div>
@@ -214,33 +318,85 @@ export default function TaskDetailModal({ task, onClose }: Props) {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Sidebar (Assignees, etc.) */}
-          <div className="w-48 space-y-4 pt-2">
+          {/* Right Column (Sidebar) */}
+          <div className="w-full md:w-48 space-y-4 pt-2 shrink-0">
             <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
               Add to card
             </div>
 
-            {/* Assignee Placeholder */}
-            <button className="w-full flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm text-gray-700 transition-colors text-left">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            <div className="relative">
+              <button
+                onClick={() => setShowAssigneeMenu(!showAssigneeMenu)}
+                className="w-full flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm text-gray-700 transition-colors text-left font-medium"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                />
-              </svg>
-              Members
-            </button>
+                <svg
+                  className="w-4 h-4 text-gray-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+                Members
+              </button>
 
-            <button className="w-full flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm text-gray-700 transition-colors text-left">
+              {showAssigneeMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowAssigneeMenu(false)}
+                  ></div>
+                  <div className="absolute top-full mt-2 w-60 bg-white shadow-xl rounded-lg border border-gray-100 z-20 py-2 max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100 right-0 sm:left-0">
+                    <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-50 mb-1">
+                      Select Member
+                    </div>
+                    {allMembers.length === 0 && (
+                      <div className="px-4 py-2 text-sm text-gray-400 italic">
+                        No members found
+                      </div>
+                    )}
+                    {allMembers.map((email) => (
+                      <button
+                        key={email}
+                        onClick={() => handleAssignMember(email)}
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-3 transition-colors"
+                      >
+                        <UserAvatar email={email} size="sm" />
+                        <span className="truncate flex-1 font-medium">
+                          {email === currentUser?.email
+                            ? `${email} (You)`
+                            : email}
+                        </span>
+                        {task.assignedTo === email && (
+                          <svg
+                            className="w-4 h-4 text-blue-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <button className="w-full flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm text-gray-700 transition-colors text-left font-medium">
               <svg
-                className="w-4 h-4"
+                className="w-4 h-4 text-gray-500"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -255,9 +411,11 @@ export default function TaskDetailModal({ task, onClose }: Props) {
               Labels
             </button>
 
-            {/* Delete Task Button */}
             <div className="mt-8 border-t pt-4 border-gray-100">
-              <button className="w-full flex items-center gap-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded text-sm transition-colors">
+              <button
+                onClick={handleDeleteTask}
+                className="w-full flex items-center gap-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded text-sm transition-colors font-medium border border-transparent hover:border-red-200"
+              >
                 <svg
                   className="w-4 h-4"
                   fill="none"

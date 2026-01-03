@@ -11,6 +11,11 @@ export type TaskDto = {
   title: string;
   description?: string;
   position: number;
+  assignedTo?: string;
+};
+
+export type UpdateTaskRequest = Partial<TaskDto> & {
+  assignedTo?: string; // FIX: Backend Request expects this key
 };
 
 // Define the payload type for moving tasks
@@ -21,7 +26,7 @@ interface MoveTaskPayload {
   targetIndex: number;
 }
 
-// 1. Fetch Tasks Thunk (Existing)
+// 1. Fetch Tasks Thunk
 export const fetchTasksForList = createAsyncThunk(
   "tasks/fetchForList",
   async (listId: number) => {
@@ -30,27 +35,36 @@ export const fetchTasksForList = createAsyncThunk(
   }
 );
 
-// 2. [NEW] Create Task Thunk
+// 2. Create Task Thunk
 export const createTask = createAsyncThunk(
   "tasks/create",
   async ({ listId, title }: { listId: number; title: string }) => {
-    // We send a high position value (like 65535) to ensure it goes to the bottom
-    // Or let the backend handle the logic.
+    // The backend handles position calculation.
+    // We send an empty description to satisfy any @NotNull checks if they exist,
+    // though your backend logic seems to handle nulls fine too.
     const resp = await api.post<TaskDto>(`/api/lists/${listId}/tasks`, {
       title,
-      position: 65535,
+      description: "",
     });
     return resp.data;
   }
 );
 
-// 3. NEW: Update Task (Description, Title, etc.)
+// 3. Update Task (Description, Title, etc.)
 export const updateTask = createAsyncThunk(
   "tasks/update",
   async ({ taskId, data }: { taskId: number; data: Partial<TaskDto> }) => {
-    // We use PATCH to update only specific fields
-    const resp = await api.patch<TaskDto>(`/api/tasks/${taskId}`, data);
+    const resp = await api.put<TaskDto>(`/api/tasks/${taskId}`, data);
     return resp.data;
+  }
+);
+
+// [NEW] Delete Task
+export const deleteTask = createAsyncThunk(
+  "tasks/delete",
+  async ({ taskId, listId }: { taskId: number; listId: number }) => {
+    await api.delete(`/api/tasks/${taskId}`); //
+    return { taskId, listId };
   }
 );
 
@@ -80,16 +94,16 @@ const slice = createSlice({
 
       // 4. Handle Destination
       if (fromList === toList) {
-        // SAME LIST: We insert back into the SAME array we just spliced from
+        // SAME LIST
         sourceList.splice(targetIndex, 0, task);
-        // Recalculate positions for this list only
+        // Recalculate positions (visual only)
         sourceList.forEach((t, i) => (t.position = i));
       } else {
-        // DIFFERENT LIST: Get target list
+        // DIFFERENT LIST
         const targetList = state.byList[toList];
         if (targetList) {
           targetList.splice(targetIndex, 0, task);
-          // Recalculate positions for both lists
+          // Recalculate positions
           sourceList.forEach((t, i) => (t.position = i));
           targetList.forEach((t, i) => (t.position = i));
         }
@@ -97,7 +111,25 @@ const slice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // [Existing] Fetch Fulfilled
+    // --- 1. FETCH TASKS (Restored) ---
+    // This was missing! It's why tasks might not have been appearing correctly.
+    builder.addCase(fetchTasksForList.fulfilled, (state, action) => {
+      const sortedTasks = action.payload.tasks.sort(
+        (a, b) => a.position - b.position
+      );
+      state.byList[action.payload.listId] = sortedTasks;
+    });
+
+    // --- 2. CREATE TASK ---
+    builder.addCase(createTask.fulfilled, (state, action) => {
+      const newTask = action.payload;
+      if (!state.byList[newTask.listId]) {
+        state.byList[newTask.listId] = [];
+      }
+      state.byList[newTask.listId].push(newTask);
+    });
+
+    // --- 3. UPDATE TASK ---
     builder.addCase(updateTask.fulfilled, (state, action) => {
       const updatedTask = action.payload;
       const list = state.byList[updatedTask.listId];
@@ -109,17 +141,14 @@ const slice = createSlice({
       }
     });
 
-    // 3. [NEW] Handle Create Task Success
-    builder.addCase(createTask.fulfilled, (state, action) => {
-      const newTask = action.payload;
-
-      // Initialize array if it doesn't exist yet (safety check)
-      if (!state.byList[newTask.listId]) {
-        state.byList[newTask.listId] = [];
+    // Delete
+    builder.addCase(deleteTask.fulfilled, (state, action) => {
+      const { taskId, listId } = action.payload;
+      if (state.byList[listId]) {
+        state.byList[listId] = state.byList[listId].filter(
+          (t) => t.id !== taskId
+        );
       }
-
-      // Add the new task to the end of the list
-      state.byList[newTask.listId].push(newTask);
     });
   },
 });

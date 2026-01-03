@@ -4,12 +4,12 @@ import api from "../../api/apiClient";
 export type CommentDto = {
   id: number;
   taskId: number;
-  content: string;
-  authorEmail: string;
+  text: string;
+  author: string;
   createdAt: string;
 };
 
-// 1. Fetch Comments for a Task
+// 1. Fetch Comments
 export const fetchComments = createAsyncThunk(
   "comments/fetch",
   async (taskId: number) => {
@@ -21,9 +21,10 @@ export const fetchComments = createAsyncThunk(
 // 2. Add a Comment
 export const createComment = createAsyncThunk(
   "comments/create",
-  async ({ taskId, content }: { taskId: number; content: string }) => {
+  async ({ taskId, text }: { taskId: number; text: string }) => {
+    // FIX: Backend expects "text", not "content"
     const resp = await api.post<CommentDto>(`/api/tasks/${taskId}/comments`, {
-      content,
+      text,
     });
     return resp.data;
   }
@@ -32,16 +33,14 @@ export const createComment = createAsyncThunk(
 const slice = createSlice({
   name: "comments",
   initialState: {
-    byTask: {} as Record<number, CommentDto[]>, // Map taskId -> comments[]
+    byTask: {} as Record<number, CommentDto[]>,
     loading: false,
   },
   reducers: {},
   extraReducers: (builder) => {
-    // Fetch
     builder.addCase(fetchComments.fulfilled, (state, action) => {
       state.byTask[action.payload.taskId] = action.payload.comments;
     });
-    // Create
     builder.addCase(createComment.fulfilled, (state, action) => {
       const comment = action.payload;
       if (!state.byTask[comment.taskId]) {

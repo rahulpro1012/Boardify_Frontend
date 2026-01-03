@@ -27,7 +27,7 @@ const router = createBrowserRouter([
     element: <Login />,
   },
   {
-    path: "/register", // <--- Add this block
+    path: "/register",
     element: <Register />,
   },
   {

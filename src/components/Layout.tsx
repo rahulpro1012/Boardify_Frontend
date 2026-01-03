@@ -1,13 +1,26 @@
+import { useEffect, useState } from "react";
 import { Link, Outlet } from "react-router-dom";
-import { useAuth } from "../features/auth/useAuth"; // Assuming path
+import { useAuth } from "../features/auth/useAuth";
+import { useAppDispatch, useAppSelector } from "../app/hooks"; // [NEW]
+import { fetchCurrentUser } from "../features/auth/authSlice"; // [NEW]
+import UserAvatar from "./UserAvatar"; // [NEW]
+import ProfileModal from "../features/auth/ProfileModal"; // [NEW]
 
 export default function Layout() {
   const { logout } = useAuth();
+  const dispatch = useAppDispatch();
+  const currentUser = useAppSelector((s) => s.auth.user); // [NEW] Get user from Redux
+  const [showProfile, setShowProfile] = useState(false); // [NEW] Modal state
+
+  // [NEW] Fetch user profile once when the app loads
+  useEffect(() => {
+    dispatch(fetchCurrentUser());
+  }, [dispatch]);
 
   return (
-    <div className="min-h-screen bg-gray-50 text-slate-900">
+    <div className="flex flex-col h-screen bg-gray-50 text-slate-900">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 px-4 h-14 flex items-center justify-between shadow-sm">
+      <header className="bg-white border-b border-gray-200 shrink-0 h-14 px-4 flex items-center justify-between shadow-sm z-50 relative">
         <div className="flex items-center gap-4">
           <Link
             to="/"
@@ -23,20 +36,41 @@ export default function Layout() {
         </div>
 
         {/* User Actions */}
-        <div>
+        <div className="flex items-center gap-3">
           <button
             onClick={logout}
             className="text-sm text-red-600 hover:text-red-700 font-medium px-3 py-1 rounded hover:bg-red-50 transition-colors"
           >
             Logout
           </button>
+
+          {/* [NEW] Divider */}
+          <div className="h-6 w-px bg-gray-200"></div>
+
+          {/* [NEW] Profile Avatar Button */}
+          <button
+            onClick={() => setShowProfile(true)}
+            className="rounded-full hover:ring-2 hover:ring-offset-1 hover:ring-blue-500 transition-all"
+            title="View Profile"
+          >
+            <UserAvatar
+              email={currentUser?.email}
+              username={currentUser?.username}
+              size="md"
+            />
+          </button>
         </div>
       </header>
 
       {/* Page Content */}
-      <main className="p-4 h-[calc(100vh-3.5rem)]">
+      {/* Removed 'p-4' so BoardView can use full width. 
+          Add 'p-4' inside your Dashboard component instead! */}
+      <main className="flex-1 overflow-hidden relative">
         <Outlet />
       </main>
+
+      {/* [NEW] Profile Modal */}
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
     </div>
   );
 }
