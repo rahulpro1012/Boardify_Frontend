@@ -35,7 +35,7 @@ Boardify is a modern, full-stack task management application inspired by Trello.
 
 A responsive Kanban-style frontend for the Boardify app, built with React, TypeScript, Vite and Tailwind CSS. This repository contains the UI and client-side logic for boards, lists, tasks, comments, authentication and user profiles.
 
-![Boardify Preview](public/vite.svg)
+![Boardify Preview](public/BoardView.png)
 
 ## ✨ Key Features
 
