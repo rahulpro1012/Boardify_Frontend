@@ -10,17 +10,23 @@ export default function ProfileModal({ onClose }: Props) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  // Get the user data fetched from backend
   const user = useAppSelector((s) => s.auth.user);
 
   const handleLogout = () => {
     if (confirm("Are you sure you want to logout?")) {
       dispatch(logout());
-      navigate("/login"); // Redirect to login
+      navigate("/login");
     }
   };
 
   if (!user) return null;
+
+  // 1. Derive a "Username" from the email (everything before @)
+  const displayUsername = user.email.split("@")[0];
+
+  // 2. Create a Masked ID (e.g., ••••24)
+  // Converting to string first in case it's a number
+  const maskedId = `••••${user.id.toString().slice(-2).padStart(2, "0")}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -34,15 +40,18 @@ export default function ProfileModal({ onClose }: Props) {
         {/* Profile Avatar */}
         <div className="absolute top-12 left-1/2 -translate-x-1/2">
           <div className="w-24 h-24 bg-white rounded-full p-1 shadow-lg">
-            <div className="w-full h-full bg-blue-100 rounded-full flex items-center justify-center text-4xl font-bold text-blue-600 select-none">
-              {user.username?.[0]?.toUpperCase()}
+            <div className="w-full h-full bg-blue-100 rounded-full flex items-center justify-center text-4xl font-bold text-blue-600 select-none uppercase">
+              {displayUsername[0]}
             </div>
           </div>
         </div>
 
         {/* User Info */}
         <div className="pt-16 pb-6 px-6 text-center">
-          <h2 className="text-xl font-bold text-gray-800">{user.username}</h2>
+          {/* [UPDATED] Show derived username prominently */}
+          <h2 className="text-xl font-bold text-gray-800 capitalize">
+            {displayUsername}
+          </h2>
           <p className="text-sm text-gray-500 mb-6">{user.email}</p>
 
           <div className="bg-gray-50 rounded-lg p-4 text-left space-y-3 border border-gray-100">
@@ -54,12 +63,14 @@ export default function ProfileModal({ onClose }: Props) {
                 {user.role || "Member"}
               </span>
             </div>
+
+            {/* [UPDATED] Masked ID */}
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold text-gray-400 uppercase">
                 User ID
               </span>
-              <span className="text-sm font-mono text-gray-600">
-                #{user.id}
+              <span className="text-sm font-mono text-gray-500 tracking-widest">
+                {maskedId}
               </span>
             </div>
           </div>

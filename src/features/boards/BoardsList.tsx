@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchBoards, createBoard, clearBoardErrors } from "./boardsSlice";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import toast from "react-hot-toast";
 
 export default function BoardsList() {
   const dispatch = useAppDispatch();
@@ -35,7 +36,13 @@ export default function BoardsList() {
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newBoardName.trim()) {
-      dispatch(createBoard(newBoardName));
+      try {
+        dispatch(createBoard(newBoardName));
+        toast.success("Board created successfully!"); // Success
+      } catch (err) {
+        toast.error("Failed to create board. Please try again."); // Error
+        console.log(err);
+      }
     }
   };
 

@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { fetchComments, createComment } from "../comments/commentsSlice";
 import { updateTask, deleteTask, type TaskDto } from "./tasksSlice";
 import UserAvatar from "../../components/UserAvatar";
+import { toast } from "react-hot-toast";
 
 interface Props {
   task: TaskDto;
@@ -70,6 +71,7 @@ export default function TaskDetailModal({ task, onClose }: Props) {
           },
         })
       );
+      toast.success("Description saved"); // Nice little confirmation
     }
     setIsEditingDesc(false);
   };
@@ -96,6 +98,7 @@ export default function TaskDetailModal({ task, onClose }: Props) {
   const handleDeleteTask = async () => {
     if (confirm("Are you sure you want to delete this task?")) {
       await dispatch(deleteTask({ taskId: task.id, listId: task.listId }));
+      toast.success("Task deleted");
       onClose();
     }
   };
@@ -394,7 +397,7 @@ export default function TaskDetailModal({ task, onClose }: Props) {
               )}
             </div>
 
-            <button className="w-full flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm text-gray-700 transition-colors text-left font-medium">
+            {/* <button className="w-full flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm text-gray-700 transition-colors text-left font-medium">
               <svg
                 className="w-4 h-4 text-gray-500"
                 fill="none"
@@ -409,7 +412,7 @@ export default function TaskDetailModal({ task, onClose }: Props) {
                 />
               </svg>
               Labels
-            </button>
+            </button> */}
 
             <div className="mt-8 border-t pt-4 border-gray-100">
               <button

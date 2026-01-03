@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import { type RootState } from "../../app/store";
 import { useAuth } from "./useAuth";
+import toast, { Toaster } from "react-hot-toast"; // [NEW] Import
 
 export default function Login() {
   const { login } = useAuth();
@@ -26,12 +27,23 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (email && password) {
-      await login(email, password);
+      // [NEW] Capture the success result
+      const success = await login(email, password);
+
+      if (success) {
+        toast.success("Welcome back!");
+      } else {
+        // You can use the generic message or the one from Redux
+        toast.error("Invalid email or password");
+      }
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-900 p-4">
+      {/* [NEW] Add Toaster here because Login page is outside the main Layout */}
+      <Toaster position="top-center" />
+
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
         {/* Header Section */}
         <div className="px-8 pt-8 pb-6 text-center">
@@ -61,7 +73,7 @@ export default function Login() {
 
         {/* Form Section */}
         <form onSubmit={handleSubmit} className="px-8 pb-8">
-          {/* Error Banner */}
+          {/* Error Banner (Optional: You can keep this OR remove it since you have toasts now) */}
           {error && (
             <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-center gap-2">
               <svg

@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from "../app/hooks"; // [NEW]
 import { fetchCurrentUser } from "../features/auth/authSlice"; // [NEW]
 import UserAvatar from "./UserAvatar"; // [NEW]
 import ProfileModal from "../features/auth/ProfileModal"; // [NEW]
+import { Toaster } from "react-hot-toast";
 
 export default function Layout() {
   const { logout } = useAuth();
@@ -19,6 +20,11 @@ export default function Layout() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 text-slate-900">
+      <Toaster
+        position="top-center"
+        toastOptions={{ duration: 3000 }}
+        reverseOrder={false}
+      />
       {/* Header */}
       <header className="bg-white border-b border-gray-200 shrink-0 h-14 px-4 flex items-center justify-between shadow-sm z-50 relative">
         <div className="flex items-center gap-4">

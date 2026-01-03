@@ -7,6 +7,7 @@ import {
 } from "./boardsSlice";
 import { useNavigate } from "react-router-dom";
 import UserAvatar from "../../components/UserAvatar";
+import { toast } from "react-hot-toast";
 
 interface Props {
   board: {
@@ -34,20 +35,26 @@ export default function BoardInfoModal({ board, onClose }: Props) {
 
     const currentMembers = board.members || [];
     if (currentMembers.includes(newMemberEmail)) {
-      alert("User is already a member!");
+      toast.error("User is already a member!"); // Validation Error
       return;
     }
 
     // FIX: Dispatch the specific 'addBoardMember' action
-    await dispatch(
-      addBoardMember({
-        boardId: board.id,
-        email: newMemberEmail,
-      })
-    );
+    try {
+      await dispatch(
+        addBoardMember({
+          boardId: board.id,
+          email: newMemberEmail,
+        })
+      ).unwrap();
 
-    setNewMemberEmail("");
-    setIsAdding(false);
+      toast.success(`Added ${newMemberEmail} to board`); // Success
+      setNewMemberEmail("");
+      setIsAdding(false);
+    } catch (error) {
+      toast.error("Failed to add member");
+      console.log(error);
+    }
   };
 
   // 2. Handle Remove Member
