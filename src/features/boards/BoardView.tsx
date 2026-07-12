@@ -78,7 +78,7 @@ export default function BoardView() {
     if (currentBoard && titleInput.trim() && titleInput !== currentBoard.name) {
       try {
         await dispatch(
-          updateBoard({ boardId: currentBoard.id, name: titleInput })
+          updateBoard({ boardId: currentBoard.id, name: titleInput }),
         ).unwrap();
         toast.success("Board renamed");
       } catch (err) {
@@ -95,7 +95,7 @@ export default function BoardView() {
     if (!newListTitle.trim() || !boardId) return;
     try {
       await dispatch(
-        createList({ boardId: Number(boardId), name: newListTitle })
+        createList({ boardId: Number(boardId), name: newListTitle }),
       ).unwrap();
       toast.success("List created");
       setNewListTitle("");
@@ -115,14 +115,14 @@ export default function BoardView() {
       if (source.index === destination.index) return;
       const listId = Number(draggableId.replace("list-", ""));
       dispatch(
-        moveListLocal({ fromIndex: source.index, toIndex: destination.index })
+        moveListLocal({ fromIndex: source.index, toIndex: destination.index }),
       );
       dispatch(
         reorderList({
           boardId: boardIdNum,
           listId: listId,
           targetIndex: destination.index,
-        })
+        }),
       );
       return;
     }
@@ -133,7 +133,12 @@ export default function BoardView() {
     const targetIndex = destination.index;
 
     dispatch(
-      moveLocal({ taskId, fromList: fromListId, toList: toListId, targetIndex })
+      moveLocal({
+        taskId,
+        fromList: fromListId,
+        toList: toListId,
+        targetIndex,
+      }),
     );
 
     try {
@@ -274,7 +279,7 @@ export default function BoardView() {
               direction="horizontal"
               type="LIST"
             >
-              {(provided, snapshot) => (
+              {(provided) => (
                 <div
                   ref={provided.innerRef}
                   {...provided.droppableProps}
